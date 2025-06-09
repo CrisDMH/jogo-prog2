@@ -4,6 +4,8 @@
 #include <allegro5/allegro_ttf.h>
 #include <allegro5/allegro_image.h>
 
+#include <stdio.h>
+
 #include "menu.h"
 
 void menu_aparencia(int opcoes, ALLEGRO_DISPLAY *disp, ALLEGRO_BITMAP *background,
@@ -116,10 +118,8 @@ void menu_aparencia(int opcoes, ALLEGRO_DISPLAY *disp, ALLEGRO_BITMAP *backgroun
   al_flip_display();
 }
 
-// Em menu.c
-// ... (includes e outras funções) ...
-
-void menu_opcoes(ALLEGRO_DISPLAY *disp, ALLEGRO_BITMAP *opcoes_background, ALLEGRO_FONT *fonte, ALLEGRO_EVENT_QUEUE *queue)
+void menu_opcoes(ALLEGRO_DISPLAY *disp, ALLEGRO_BITMAP *opcoes_background, ALLEGRO_FONT *fonte, ALLEGRO_EVENT_QUEUE *queue,
+                 ALLEGRO_SAMPLE_INSTANCE *musica_instancia, int *volume_atual)
 {
   bool opcao_selecionada_eh_fullscreen = (al_get_display_flags(disp) & ALLEGRO_FULLSCREEN_WINDOW) ? true : false;
   bool sair_opcoes = false;
@@ -131,18 +131,12 @@ void menu_opcoes(ALLEGRO_DISPLAY *disp, ALLEGRO_BITMAP *opcoes_background, ALLEG
   int altura_tela;
   float y_linha_opcao;
   float y_linha_instrucao;
-
-  ALLEGRO_COLOR cor_label = al_map_rgb(255, 255, 0); // Amarelo para "Screen:"
-  ALLEGRO_COLOR cor_valor = al_map_rgb(255, 255, 255); // Branco para "Fullscreen"/"Windowed"
-  ALLEGRO_COLOR cor_instrucao = al_map_rgb(200, 200, 200); // Cinza para instruções
+  int selecao_linha = 0;
 
   while (!sair_opcoes)
   {
     largura_tela = al_get_display_width(disp);
     altura_tela = al_get_display_height(disp);
-
-    y_linha_opcao = altura_tela / 2 - 30;
-    y_linha_instrucao = altura_tela / 2 + 300;
 
     if (opcoes_background != NULL) 
     {
@@ -151,22 +145,43 @@ void menu_opcoes(ALLEGRO_DISPLAY *disp, ALLEGRO_BITMAP *opcoes_background, ALLEG
                             0, 0, largura_tela, altura_tela, 0);
     }
 
-    const char *texto_label = "Screen:";
-    const char *texto_valor = opcao_selecionada_eh_fullscreen ? "< Fullscreen" : "Windowed >";
+    ALLEGRO_COLOR cor_label_selecionada = al_map_rgb(255, 255, 0);
+    ALLEGRO_COLOR cor_label_normal = al_map_rgb(200, 200, 200);
+    ALLEGRO_COLOR cor_valor = al_map_rgb(255, 255, 255);
+    ALLEGRO_COLOR cor_instrucao = al_map_rgb(200, 200, 200);
 
-    float largura_label = al_get_text_width(fonte, texto_label);
-    float espaco_entre_label_e_valor = 10;
-    float largura_valor = al_get_text_width(fonte, texto_valor);
-    float largura_total_opcao = largura_label + espaco_entre_label_e_valor + largura_valor;
-        
-    float x_inicio_label = (largura_tela / 2) - (largura_total_opcao / 2);
-    float x_inicio_valor = x_inicio_label + largura_label + espaco_entre_label_e_valor;
+    // --- LINHA 1: OPÇÃO DE TELA (SCREEN) ---
+    float y_linha_screen = altura_tela / 2.0f - 50;
+    // ... (lógica de desenho para a opção de tela, como estava) ...
+    const char *texto_label_screen = "Screen:";
+    const char *texto_valor_screen = opcao_selecionada_eh_fullscreen ? "< Fullscreen >" : "< Windowed >";
+    al_draw_text(fonte, selecao_linha == 0 ? cor_label_selecionada : cor_label_normal, largura_tela / 2.0f - 150, y_linha_screen, ALLEGRO_ALIGN_RIGHT, texto_label_screen);
+    al_draw_text(fonte, cor_valor, largura_tela / 2.0f - 130, y_linha_screen, ALLEGRO_ALIGN_LEFT, texto_valor_screen);
 
-    al_draw_text(fonte, cor_label, x_inicio_label, y_linha_opcao, ALLEGRO_ALIGN_LEFT, texto_label);
-    al_draw_text(fonte, cor_valor, x_inicio_valor, y_linha_opcao, ALLEGRO_ALIGN_LEFT, texto_valor);
 
-    // Atualiza o texto de instrução
-    al_draw_text(fonte, cor_instrucao, largura_tela / 2, y_linha_instrucao, ALLEGRO_ALIGN_CENTER, "< > - Select | ENTER - Apply | ESC - Back");
+    // --- LINHA 2: OPÇÃO DE VOLUME ---
+    float y_linha_volume = altura_tela / 2.0f + 10;
+    // ... (lógica de desenho para a opção de volume, como estava) ...
+    const char *texto_label_volume = "Volume:";
+    char texto_valor_volume[8];
+    sprintf(texto_valor_volume, "< %d >", *volume_atual);
+    al_draw_text(fonte, selecao_linha == 1 ? cor_label_selecionada : cor_label_normal, largura_tela / 2.0f - 150, y_linha_volume, ALLEGRO_ALIGN_RIGHT, texto_label_volume);
+    al_draw_text(fonte, cor_valor, largura_tela / 2.0f - 130, y_linha_volume, ALLEGRO_ALIGN_LEFT, texto_valor_volume);
+
+    
+    // --- LINHA 3: INSTRUÇÕES (APENAS TEXTO) ---
+    float y_base_instrucao = altura_tela * 0.85f - 70; // Posição inicial para o bloco de instruções
+    float x_pos_instrucao = largura_tela / 2.0f;  // Posição X centralizada
+    float espaco_entre_linhas = al_get_font_line_height(fonte); // Espaço entre as linhas
+
+    
+    const char *instrucao_linha_1 = "UP/DOWN - Select | < > - Switch";
+    const char *instrucao_linha_2 = "ENTER - Apply | ESC - Back";
+
+    // Desenhando cada linha separadamente
+    al_draw_text(fonte, cor_instrucao, x_pos_instrucao, y_base_instrucao, ALLEGRO_ALIGN_CENTER, instrucao_linha_1);
+    al_draw_text(fonte, cor_instrucao, x_pos_instrucao, y_base_instrucao + espaco_entre_linhas, ALLEGRO_ALIGN_CENTER, instrucao_linha_2);
+
 
     al_flip_display();
 
@@ -177,45 +192,49 @@ void menu_opcoes(ALLEGRO_DISPLAY *disp, ALLEGRO_BITMAP *opcoes_background, ALLEG
     {
       switch (ev.keyboard.keycode)
       {
+        case ALLEGRO_KEY_UP:
+        case ALLEGRO_KEY_DOWN:
+            selecao_linha = (selecao_linha + 1) % 2; // Alterna entre as 2 opções
+            break;
         case ALLEGRO_KEY_LEFT:
-        // Apenas alterna a SELEÇÃO para "Windowed" se "Fullscreen" estiver selecionado
-        if (opcao_selecionada_eh_fullscreen)
-        {
-          opcao_selecionada_eh_fullscreen = false;
-        }
-        break;
+            if (selecao_linha == 0) { // Alterando SCREEN
+                if (opcao_selecionada_eh_fullscreen) opcao_selecionada_eh_fullscreen = false;
+            } 
+            else if (selecao_linha == 1) { // Alterando VOLUME
+                if (*volume_atual > 0) (*volume_atual)--;
+                if (musica_instancia) al_set_sample_instance_gain(musica_instancia, (float)(*volume_atual) / 10.0f);
+            }
+            break;
         case ALLEGRO_KEY_RIGHT:
-        // Apenas alterna a SELEÇÃO para "Fullscreen" se "Windowed" estiver selecionado
-        if (!opcao_selecionada_eh_fullscreen)
-        {
-          opcao_selecionada_eh_fullscreen = true;
-        }
-        break;
+            if (selecao_linha == 0) { // Alterando SCREEN
+                if (!opcao_selecionada_eh_fullscreen) opcao_selecionada_eh_fullscreen = true;
+            } 
+            else if (selecao_linha == 1) { // Alterando VOLUME
+                if (*volume_atual < 10) (*volume_atual)++;
+                if (musica_instancia) al_set_sample_instance_gain(musica_instancia, (float)(*volume_atual) / 10.0f);
+            }
+            break;
         case ALLEGRO_KEY_ENTER:
         {
-          // Verifica qual é o modo de tela REALMENTE aplicado no momento
-          bool modo_aplicado_no_display_eh_fullscreen = (al_get_display_flags(disp) & ALLEGRO_FULLSCREEN_WINDOW) ? true : false;
-                        
-          // Só tenta alterar o modo da tela se a opção selecionada for DIFERENTE do modo já aplicado
-          if (opcao_selecionada_eh_fullscreen != modo_aplicado_no_display_eh_fullscreen)
-          {
-            al_toggle_display_flag(disp, ALLEGRO_FULLSCREEN_WINDOW, opcao_selecionada_eh_fullscreen);
-            // Após tentar aplicar, a variável opcao_selecionada_eh_fullscreen agora reflete
-            // o novo estado desejado (e esperançosamente aplicado).
-            // A próxima leitura de al_get_display_flags() confirmaria.
+          if (selecao_linha == 0) { // ENTER só afeta a opção de tela
+            bool modo_aplicado = (al_get_display_flags(disp) & ALLEGRO_FULLSCREEN_WINDOW);
+            if (opcao_selecionada_eh_fullscreen != modo_aplicado) {
+                al_toggle_display_flag(disp, ALLEGRO_FULLSCREEN_WINDOW, opcao_selecionada_eh_fullscreen);
+                // CORREÇÃO: Adicionando o resize para corrigir bug da resolução
+                if (!opcao_selecionada_eh_fullscreen) { 
+                    al_resize_display(disp, LARGURA_JANELA_DESEJADA, ALTURA_JANELA_DESEJADA); 
+                }
+            }
           }
         }
         break;
         case ALLEGRO_KEY_ESCAPE:
-        sair_opcoes = true;
-        break;
+          sair_opcoes = true;
+          break;
         default:
-        break;
+          break;
       }
     }
-    else if (ev.type == ALLEGRO_EVENT_DISPLAY_CLOSE)
-    {
-      sair_opcoes = true;
-    }
+    else if (ev.type == ALLEGRO_EVENT_DISPLAY_CLOSE) { sair_opcoes = true; }
   }
 }

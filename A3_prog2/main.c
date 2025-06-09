@@ -1,4 +1,4 @@
-// COMPILAÇÃO: gcc main.c menu.c -o JOGO $(pkg-config --libs --cflags allegro-5 allegro_main-5 allegro_font-5 allegro_ttf-5 allegro_primitives-5 allegro_image-5 allegro_audio-5 allegro_acodec-5)
+// COMPILAÇÃO: gcc main.c menu.c player.c fase1.c -o JOGO $(pkg-config --libs --cflags allegro-5 allegro_main-5 allegro_font-5 allegro_ttf-5 allegro_primitives-5 allegro_image-5 allegro_audio-5 allegro_acodec-5)
 #include <allegro5/allegro.h>
 #include <allegro5/allegro_font.h>
 #include <allegro5/allegro_font.h>
@@ -6,11 +6,20 @@
 #include <allegro5/allegro_image.h>
 #include <allegro5/allegro_audio.h>
 #include <allegro5/allegro_acodec.h>
+#include <allegro5/allegro_primitives.h>
+
 #include <stdio.h>
 #include <stdbool.h>
 
 #include "menu.h"
 #include "player.h"
+#include "fase1.h"
+
+typedef enum {
+    ESTADO_MENU,
+    ESTADO_JOGANDO,
+    ESTADO_SAIR
+} GameState;
 
 int main() 
 {
@@ -23,6 +32,7 @@ int main()
   al_init_acodec_addon();
   al_reserve_samples(10);
   al_set_new_display_flags(ALLEGRO_FULLSCREEN_WINDOW);
+  al_init_primitives_addon();
 
   ALLEGRO_DISPLAY *disp = al_create_display(1280, 800);
   ALLEGRO_EVENT_QUEUE *queue = al_create_event_queue();
@@ -37,59 +47,90 @@ int main()
   ALLEGRO_FONT *fonte_opcoes = al_load_ttf_font("alagard.ttf", 50, 0);
   
   ALLEGRO_BITMAP *mao = al_load_bitmap("mao.png");
+  ALLEGRO_BITMAP *seta_esquerda = al_load_bitmap("seta_esquerda.png");
+  ALLEGRO_BITMAP *seta_direita = al_load_bitmap("seta_direita.png");
+  ALLEGRO_BITMAP *seta_cima = al_load_bitmap("seta_cima.png");
+  ALLEGRO_BITMAP *seta_baixo = al_load_bitmap("seta_baixo.png");
 
   ALLEGRO_SAMPLE *musica_menu = al_load_sample("menu_theme.ogg");
-  ALLEGRO_SAMPLE_ID musica_menu_id;
+  ALLEGRO_SAMPLE_INSTANCE *musica_menu_instancia = NULL;
 
   bool musica_tocando = false;
   int opcao = 0;
-  int rodando = 1;
+  static int volume_musica = 10;
+  GameState estado_atual = ESTADO_MENU;
 
-  if (al_play_sample(musica_menu, 1.0, 0.0, 1.0, ALLEGRO_PLAYMODE_LOOP, &musica_menu_id)) 
-    musica_tocando = true;
-
-  while (rodando) 
+  if (musica_menu) 
   {
-    menu_aparencia(opcao, disp, background, fonte_titulo, fonte_inicial, mao);
+    musica_menu_instancia = al_create_sample_instance(musica_menu);
+    al_attach_sample_instance_to_mixer(musica_menu_instancia, al_get_default_mixer());
+    al_set_sample_instance_playmode(musica_menu_instancia, ALLEGRO_PLAYMODE_LOOP);
+      
+    // Define o ganho (volume) inicial baseado na nossa variável
+    al_set_sample_instance_gain(musica_menu_instancia, (float)volume_musica / 10.0f);
+      
+    if (al_play_sample_instance(musica_menu_instancia))
+      musica_tocando = true;
+  }
 
-    ALLEGRO_EVENT ev;
-    al_wait_for_event(queue, &ev);
-
-    if (ev.type == ALLEGRO_EVENT_KEY_DOWN) 
+    while (estado_atual != ESTADO_SAIR) 
+  {
+    if (estado_atual == ESTADO_MENU)
     {
-      if (ev.keyboard.keycode == ALLEGRO_KEY_DOWN) 
-      {
-        opcao = (opcao + 1) % 3;
-      } 
-      else if (ev.keyboard.keycode == ALLEGRO_KEY_UP) 
-      {
-        opcao = (opcao + 2) % 3;
-      } 
-      else if (ev.keyboard.keycode == ALLEGRO_KEY_ENTER) 
-      {
-        if (opcao == START) 
-        {
-          // Jogar
-          // Aqui você chama o início do jogo
+        // Garante que a música do menu esteja tocando
+        if (musica_menu_instancia && !al_get_sample_instance_playing(musica_menu_instancia)) {
+            al_play_sample_instance(musica_menu_instancia);
         }
-        else if (opcao == OPTIONS) 
+
+        menu_aparencia(opcao, disp, background, fonte_titulo, fonte_inicial, mao);
+
+        ALLEGRO_EVENT ev;
+        al_wait_for_event(queue, &ev);
+
+        if (ev.type == ALLEGRO_EVENT_KEY_DOWN) 
         {
-          menu_opcoes(disp, opcoes_background, fonte_opcoes, queue);
+          if (ev.keyboard.keycode == ALLEGRO_KEY_DOWN) { opcao = (opcao + 1) % 3; } 
+          else if (ev.keyboard.keycode == ALLEGRO_KEY_UP) { opcao = (opcao + 2) % 3; } 
+          else if (ev.keyboard.keycode == ALLEGRO_KEY_ENTER) 
+          {
+            if (opcao == START) 
+            {
+              estado_atual = ESTADO_JOGANDO; // Muda o estado para iniciar o jogo
+            }
+            else if (opcao == OPTIONS) 
+            {
+              menu_opcoes(disp, opcoes_background, fonte_opcoes, queue, musica_menu_instancia, &volume_musica);
+            }
+            else if (opcao == QUIT) 
+            {
+              estado_atual = ESTADO_SAIR; 
+            }
+          }
         }
-        else if (opcao == QUIT) 
+        else if (ev.type == ALLEGRO_EVENT_DISPLAY_CLOSE)
         {
-          rodando = 0; 
+          estado_atual = ESTADO_SAIR;
         }
-      }
     }
-    else if (ev.type == ALLEGRO_EVENT_DISPLAY_CLOSE)
+    else if (estado_atual == ESTADO_JOGANDO)
     {
-      rodando = 0;
+        // Para a música do menu antes de entrar na fase
+        if (musica_menu_instancia && al_get_sample_instance_playing(musica_menu_instancia)) {
+            al_stop_sample_instance(musica_menu_instancia);
+        }
+
+        // Chama a função que contém todo o loop da fase 1
+        iniciar_fase1(disp, queue);
+        
+        // Quando a fase 1 terminar (seja por game over ou por completar), volta para o menu
+        estado_atual = ESTADO_MENU;
     }
   }
-  if (musica_tocando) 
-  { 
-    al_stop_sample(&musica_menu_id);
+  
+  // --- LIMPEZA FINAL DE RECURSOS ---
+  if (musica_menu_instancia) {
+    al_stop_sample_instance(musica_menu_instancia);
+    al_destroy_sample_instance(musica_menu_instancia);
   }
   al_destroy_sample(musica_menu);
 
@@ -98,8 +139,10 @@ int main()
   al_destroy_bitmap(mao);
   al_destroy_font(fonte_inicial);
   al_destroy_font(fonte_opcoes);
+  al_destroy_font(fonte_titulo);
   al_destroy_display(disp);
   al_destroy_event_queue(queue);
+  
   al_uninstall_audio();
 
   return 0;
