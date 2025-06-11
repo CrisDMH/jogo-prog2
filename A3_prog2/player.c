@@ -12,13 +12,14 @@ void inicializar_player(Player *player, ALLEGRO_BITMAP *sprite_andando) {
 
     player->sprite_sheet = sprite_andando;
     player->frame_atual = 0;
-    player->max_frames = 7; // Seu spritesheet tem 7 frames de animação por linha
+    player->max_frames = 14; 
     player->tempo_frame = 0;
     player->duracao_frame = 0.1; // Cada frame dura 0.1 segundos
     player->andando = false;
     player->direcao = DIREITA; 
     player->frame_largura = 200; 
     player->frame_altura = 368; 
+    player->linha_atual = 0;
 }
 
 void inicializar_projeteis_player(ProjetilPlayer projeteis[]) {
@@ -107,10 +108,11 @@ void atualizar_projeteis_player(ProjetilPlayer projeteis[], float camera_x) {
 void desenhar_player(Player *player, float camera_x) 
 {
     if (player->sprite_sheet) {
-        // Posição x do frame no spritesheet
-        int fx = player->frame_atual * player->frame_largura;
-        // Posição y do frame (0 para a primeira linha)
-        int fy = 0; 
+        int coluna = player->frame_atual % 7;
+        int linha = player->frame_atual / 7;
+
+        int fx = coluna * player->frame_largura;
+        int fy = linha * player->frame_altura;
         
         // Flag para inverter a imagem se estiver andando para a esquerda
         int flag = (player->direcao == -1) ? ALLEGRO_FLIP_HORIZONTAL : 0;

@@ -32,6 +32,7 @@ typedef struct {
     int direcao;              // Para qual lado está virado (1 = direita, -1 = esquerda)
     int frame_largura;        // Largura de um único frame
     int frame_altura;         // Altura de um único frame
+    int linha_atual;          // Linha que está no spritesheet
 } Player;
 
 // --- Declarações das Funções ---
