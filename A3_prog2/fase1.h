@@ -3,6 +3,6 @@
 
 #include <allegro5/allegro.h>
 
-void iniciar_fase1(ALLEGRO_DISPLAY *display, ALLEGRO_EVENT_QUEUE *queue);
+void iniciar_fase1(ALLEGRO_DISPLAY *display, ALLEGRO_EVENT_QUEUE *queue, ALLEGRO_BITMAP *flecha, ALLEGRO_BITMAP *sprite_player);
 
 #endif //FASE1_H
