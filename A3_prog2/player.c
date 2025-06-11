@@ -64,8 +64,7 @@ void processar_input_player(Player *player, ALLEGRO_KEYBOARD_STATE *teclado, Pro
     }
 }
 
-void atualizar_player(Player *player) 
-{
+void atualizar_player(Player *player) {
     // 1. Mover o jogador baseado no seu estado
     if (player->andando) {
         if (player->direcao == 1) {
@@ -93,8 +92,7 @@ void atualizar_player(Player *player)
     }
 }
 
-void atualizar_projeteis_player(ProjetilPlayer projeteis[], float camera_x) 
-{
+void atualizar_projeteis_player(ProjetilPlayer projeteis[], float camera_x) {
     for (int i = 0; i < MAX_PROJETEIS_PLAYER; i++) {
         if (projeteis[i].ativo) {
             projeteis[i].x += projeteis[i].dx;
@@ -123,8 +121,7 @@ void desenhar_player(Player *player, float camera_x)
     }
 }
 
-void desenhar_projeteis_player(ProjetilPlayer projeteis[], float camera_x, ALLEGRO_BITMAP *flecha) 
-{
+void desenhar_projeteis_player(ProjetilPlayer projeteis[], float camera_x, ALLEGRO_BITMAP *flecha) {
     for (int i = 0; i < MAX_PROJETEIS_PLAYER; i++) {
       if (projeteis[i].ativo) {
             // Substituímos o círculo pela imagem

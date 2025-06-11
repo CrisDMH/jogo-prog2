@@ -59,7 +59,7 @@ int main()
 
   bool musica_tocando = false;
   int opcao = 0;
-  static int volume_musica = 10;
+  static int volume_musica = 3;
   GameState estado_atual = ESTADO_MENU;
 
   if (musica_menu) 
@@ -69,7 +69,7 @@ int main()
     al_set_sample_instance_playmode(musica_menu_instancia, ALLEGRO_PLAYMODE_LOOP);
       
     // Define o ganho (volume) inicial baseado na nossa variável
-    al_set_sample_instance_gain(musica_menu_instancia, (float)volume_musica / 10.0f);
+    al_set_sample_instance_gain(musica_menu_instancia, (float)volume_musica / 50.0f);
       
     if (al_play_sample_instance(musica_menu_instancia))
       musica_tocando = true;
