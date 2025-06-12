@@ -53,6 +53,8 @@ int main()
   ALLEGRO_BITMAP *seta_baixo = al_load_bitmap("seta_baixo.png");
   ALLEGRO_BITMAP *flecha = al_load_bitmap("flecha.png");
   ALLEGRO_BITMAP *spritesheet_andando = al_load_bitmap("spritesheet andando.png");
+  ALLEGRO_BITMAP *spritesheet_mirando = al_load_bitmap("spritesheet mirando.png");
+  ALLEGRO_BITMAP *spritesheet_pulando = al_load_bitmap("spritesheet pulando.png"); 
 
   ALLEGRO_SAMPLE *musica_menu = al_load_sample("menu_theme.ogg");
   ALLEGRO_SAMPLE_INSTANCE *musica_menu_instancia = NULL;
@@ -141,6 +143,8 @@ int main()
   al_destroy_bitmap(mao);
   al_destroy_bitmap(flecha);
   al_destroy_bitmap(spritesheet_andando);
+  al_destroy_bitmap(spritesheet_mirando);
+  al_destroy_bitmap(spritesheet_pulando);
   
   al_destroy_font(fonte_inicial);
   al_destroy_font(fonte_opcoes);

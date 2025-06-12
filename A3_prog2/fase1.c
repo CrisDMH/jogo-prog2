@@ -25,6 +25,8 @@ void iniciar_fase1(ALLEGRO_DISPLAY *display, ALLEGRO_EVENT_QUEUE *queue, ALLEGRO
 {
     ALLEGRO_BITMAP *fundo = al_load_bitmap("fundo_fase1.png");
     ALLEGRO_BITMAP *spritesheet_andando = al_load_bitmap("spritesheet andando.png");
+    ALLEGRO_BITMAP *spritesheet_mirando = al_load_bitmap("spritesheet mirando.png");
+    ALLEGRO_BITMAP *spritesheet_pulando = al_load_bitmap("spritesheet pulando.png");
 
     if (!fundo) {
         fprintf(stderr, "ERRO FATAL: Falha ao carregar 'fundo_fase1.png'.\n");
@@ -38,7 +40,7 @@ void iniciar_fase1(ALLEGRO_DISPLAY *display, ALLEGRO_EVENT_QUEUE *queue, ALLEGRO
     Inimigo inimigos[MAX_INIMIGOS];
 
     // Passa o spritesheet carregado em main.c para o jogador
-    inicializar_player(&player, spritesheet_andando);
+    inicializar_player(&player, spritesheet_andando, spritesheet_mirando, spritesheet_pulando);
     inicializar_projeteis_player(projeteis_player);
 
     for(int i = 0; i < MAX_INIMIGOS; i++) { inimigos[i].ativo = false; }
@@ -69,7 +71,7 @@ void iniciar_fase1(ALLEGRO_DISPLAY *display, ALLEGRO_EVENT_QUEUE *queue, ALLEGRO
             processar_input_player(&player, &teclado, projeteis_player);
 
             // --- CORREÇÃO CRÍTICA: CHAMANDO A FUNÇÃO DE ATUALIZAÇÃO ---
-            atualizar_player(&player);
+            atualizar_player(&player, &teclado);
 
             atualizar_projeteis_player(projeteis_player, camera_x);
             
@@ -122,8 +124,8 @@ void iniciar_fase1(ALLEGRO_DISPLAY *display, ALLEGRO_EVENT_QUEUE *queue, ALLEGRO
             }
             
             // Desenho dos elementos do jogo
-            desenhar_projeteis_player(projeteis_player, camera_x, flecha);
             desenhar_player(&player, camera_x);
+            desenhar_projeteis_player(projeteis_player, camera_x, flecha);
             // ... (desenho de inimigos)
 
             al_flip_display();
