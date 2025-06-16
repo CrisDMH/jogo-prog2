@@ -5,4 +5,6 @@
 
 void iniciar_fase1(ALLEGRO_DISPLAY *display, ALLEGRO_EVENT_QUEUE *queue, ALLEGRO_BITMAP *flecha, ALLEGRO_BITMAP *sprite_player);
 
+void encerrar_fase1();
+
 #endif //FASE1_H

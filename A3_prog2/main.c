@@ -1,4 +1,4 @@
-// COMPILAÇÃO: gcc main.c menu.c player.c fase1.c -o JOGO $(pkg-config --libs --cflags allegro-5 allegro_main-5 allegro_font-5 allegro_ttf-5 allegro_primitives-5 allegro_image-5 allegro_audio-5 allegro_acodec-5)
+// COMPILAÇÃO: gcc main.c menu.c player.c fase1.c hud.c -o JOGO $(pkg-config --libs --cflags allegro-5 allegro_main-5 allegro_font-5 allegro_ttf-5 allegro_primitives-5 allegro_image-5 allegro_audio-5 allegro_acodec-5)
 #include <allegro5/allegro.h>
 #include <allegro5/allegro_font.h>
 #include <allegro5/allegro_font.h>
@@ -14,6 +14,7 @@
 #include "menu.h"
 #include "player.h"
 #include "fase1.h"
+#include "hud.h"
 
 typedef enum {
     ESTADO_MENU,
@@ -55,14 +56,18 @@ int main()
   ALLEGRO_BITMAP *spritesheet_andando = al_load_bitmap("spritesheet andando.png");
   ALLEGRO_BITMAP *spritesheet_mirando = al_load_bitmap("spritesheet mirando.png");
   ALLEGRO_BITMAP *spritesheet_pulando = al_load_bitmap("spritesheet pulando.png"); 
+  ALLEGRO_BITMAP *spritesheet_agachado = al_load_bitmap("spritesheet agachado.png");
 
   ALLEGRO_SAMPLE *musica_menu = al_load_sample("menu_theme.ogg");
+  ALLEGRO_SAMPLE *musica_fase1 = al_load_sample("lost paintings.ogg");
   ALLEGRO_SAMPLE_INSTANCE *musica_menu_instancia = NULL;
 
   bool musica_tocando = false;
   int opcao = 0;
   static int volume_musica = 3;
   GameState estado_atual = ESTADO_MENU;
+
+  carregar_hud();
 
   if (musica_menu) 
   {
@@ -128,6 +133,7 @@ int main()
         
         // Quando a fase 1 terminar (seja por game over ou por completar), volta para o menu
         estado_atual = ESTADO_MENU;
+        encerrar_fase1();
     }
   }
   
@@ -137,6 +143,7 @@ int main()
     al_destroy_sample_instance(musica_menu_instancia);
   }
   al_destroy_sample(musica_menu);
+  al_destroy_sample(musica_fase1);
 
   al_destroy_bitmap(background);
   al_destroy_bitmap(opcoes_background);
@@ -145,6 +152,7 @@ int main()
   al_destroy_bitmap(spritesheet_andando);
   al_destroy_bitmap(spritesheet_mirando);
   al_destroy_bitmap(spritesheet_pulando);
+  al_destroy_bitmap(spritesheet_agachado);
   
   al_destroy_font(fonte_inicial);
   al_destroy_font(fonte_opcoes);

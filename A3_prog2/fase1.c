@@ -1,16 +1,25 @@
 #include <allegro5/allegro.h>
 #include <allegro5/allegro_image.h>
 #include <allegro5/allegro_primitives.h>
+#include <allegro5/allegro_audio.h>
+#include <allegro5/allegro_acodec.h>
 #include <stdbool.h>
 #include <stdio.h>
 
 #include "fase1.h"
 #include "player.h" // Inclui o nosso novo header do player
+#include "hud.h"
 
-// --- CONSTANTES DA FASE ---
+//--------CONSTANTES DA FASE------------
 #define LARGURA_NIVEL 4000
 #define ALTURA_NIVEL 800
 #define MAX_INIMIGOS 10
+
+//-------MUSICA DA FASE--------------
+static ALLEGRO_SAMPLE* musica_fase1 = NULL;
+static ALLEGRO_SAMPLE_INSTANCE* instancia_musica = NULL;
+static float volume_musica = 0.0f;
+static bool fade_in_ativo = false;
 
 // Struct do inimigo permanece aqui (ou poderia ir para seus próprios arquivos inimigo.h/c)
 typedef struct {
@@ -20,13 +29,31 @@ typedef struct {
     float cooldown_tiro;
 } Inimigo;
 
-
 void iniciar_fase1(ALLEGRO_DISPLAY *display, ALLEGRO_EVENT_QUEUE *queue, ALLEGRO_BITMAP *flecha, ALLEGRO_BITMAP *sprite_player) 
 {
     ALLEGRO_BITMAP *fundo = al_load_bitmap("fundo_fase1.png");
     ALLEGRO_BITMAP *spritesheet_andando = al_load_bitmap("spritesheet andando.png");
     ALLEGRO_BITMAP *spritesheet_mirando = al_load_bitmap("spritesheet mirando.png");
     ALLEGRO_BITMAP *spritesheet_pulando = al_load_bitmap("spritesheet pulando.png");
+    ALLEGRO_BITMAP *spritesheet_parado = al_load_bitmap("spritesheet parado.png");
+
+    musica_fase1 = al_load_sample("lost paintings.ogg");
+    if (!musica_fase1) 
+    {
+      fprintf(stderr, "Erro ao carregar a música lost paintings.ogg\n");
+    } 
+    else
+    {
+      instancia_musica = al_create_sample_instance(musica_fase1);
+      al_attach_sample_instance_to_mixer(instancia_musica, al_get_default_mixer());
+      al_set_sample_instance_playmode(instancia_musica, ALLEGRO_PLAYMODE_LOOP);  // Loop infinito
+      al_set_sample_instance_gain(instancia_musica, 0.0f);
+      al_play_sample_instance(instancia_musica);
+    }
+
+    volume_musica = 0.0f;
+    fade_in_ativo = true;
+
 
     if (!fundo) {
         fprintf(stderr, "ERRO FATAL: Falha ao carregar 'fundo_fase1.png'.\n");
@@ -40,7 +67,7 @@ void iniciar_fase1(ALLEGRO_DISPLAY *display, ALLEGRO_EVENT_QUEUE *queue, ALLEGRO
     Inimigo inimigos[MAX_INIMIGOS];
 
     // Passa o spritesheet carregado em main.c para o jogador
-    inicializar_player(&player, spritesheet_andando, spritesheet_mirando, spritesheet_pulando);
+    inicializar_player(&player, spritesheet_andando, spritesheet_mirando, spritesheet_pulando, spritesheet_parado);
     inicializar_projeteis_player(projeteis_player);
 
     for(int i = 0; i < MAX_INIMIGOS; i++) { inimigos[i].ativo = false; }
@@ -61,6 +88,19 @@ void iniciar_fase1(ALLEGRO_DISPLAY *display, ALLEGRO_EVENT_QUEUE *queue, ALLEGRO
     {
         ALLEGRO_EVENT ev;
         al_wait_for_event(queue, &ev);
+
+        if (fade_in_ativo && instancia_musica) 
+        {
+          volume_musica += 0.005f;  // Velocidade do fade (ajuste se quiser mais lento ou mais rápido)
+            if (volume_musica >= 0.2f) 
+            {
+                volume_musica = 0.2f;
+                fade_in_ativo = false;  // Fade concluído
+            }
+
+          al_set_sample_instance_gain(instancia_musica, volume_musica);
+        }
+
 
         // --- ATUALIZAÇÃO DA LÓGICA (60 vezes por segundo) ---
         if (ev.type == ALLEGRO_EVENT_TIMER) {
@@ -125,6 +165,8 @@ void iniciar_fase1(ALLEGRO_DISPLAY *display, ALLEGRO_EVENT_QUEUE *queue, ALLEGRO
             
             // Desenho dos elementos do jogo
             desenhar_player(&player, camera_x);
+            desenhar_barra_vida(&player);
+            desenhar_balas(&player, flecha);
             desenhar_projeteis_player(projeteis_player, camera_x, flecha);
             // ... (desenho de inimigos)
 
@@ -136,4 +178,14 @@ void iniciar_fase1(ALLEGRO_DISPLAY *display, ALLEGRO_EVENT_QUEUE *queue, ALLEGRO
     al_stop_timer(timer_fase);
     al_destroy_timer(timer_fase);
     al_destroy_bitmap(fundo);
+}
+
+void encerrar_fase1() {
+    if (instancia_musica) {
+        al_stop_sample_instance(instancia_musica);
+        al_destroy_sample_instance(instancia_musica);
+    }
+    if (musica_fase1) {
+        al_destroy_sample(musica_fase1);
+    }
 }

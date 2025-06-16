@@ -5,12 +5,13 @@
 #include <stdbool.h>
 
 // Constantes relacionadas ao jogador
-#define VELOCIDADE_PLAYER 5
+#define VELOCIDADE_PLAYER 7
 #define MAX_PROJETEIS_PLAYER 20
-#define COOLDOWN_TIRO 0.2 // Tempo em segundos entre os tiros
+#define COOLDOWN_TIRO 0.5 // Tempo em segundos entre os tiros
 #define FORCA_PULO -20.0f // Para cima, então é negativo
 #define GRAVIDADE 0.8f
 #define CHAO_Y 600.0f    // Coordenada Y do chão
+#define MAX_BALAS 4
 
 // Struct para os projéteis do jogador
 typedef struct {
@@ -23,7 +24,10 @@ typedef enum {
     PARADO,
     ANDANDO,
     ATACANDO,
-    PULANDO
+    PULANDO,
+    AGACHADO,
+    ANDANDO_AGACHADO,
+    ATACANDO_PULANDO
 } player_estado;
 
 // Struct para o jogador
@@ -38,6 +42,10 @@ typedef struct
   float dy; // velocidade vertical
   bool no_chao;
 
+  int balas;                // Quantidade de balas restantes
+  bool recarregando;         // Está recarregando?
+  float tempo_recarga;       // Contador de recarga
+
   player_estado estado_atual;
   double tempo_no_estado;
   int direcao;             
@@ -50,6 +58,7 @@ typedef struct
   ALLEGRO_BITMAP *spritesheet_andando;
   ALLEGRO_BITMAP *spritesheet_atirando;
   ALLEGRO_BITMAP *spritesheet_pulando;
+  ALLEGRO_BITMAP *spritesheet_agachado;
 
   int max_frames;           
   bool andando;   
@@ -59,13 +68,15 @@ typedef struct
   int frame_altura_mirando; 
   int frame_largura_pulo; 
   int frame_altura_pulo;
+  int frame_largura_agachado;
+  int frame_altura_agachado;
   int linha_atual;   
 
 } Player;
 
 // --- Declarações das Funções ---
 // Funções de inicialização
-void inicializar_player(Player *player, ALLEGRO_BITMAP *sprite_andando, ALLEGRO_BITMAP *sprite_mirando, ALLEGRO_BITMAP *sprite_pulando);
+void inicializar_player(Player *player, ALLEGRO_BITMAP *sprite_andando, ALLEGRO_BITMAP *sprite_mirando, ALLEGRO_BITMAP *sprite_pulando, ALLEGRO_BITMAP *sprite_agachado);
 
 void inicializar_projeteis_player(ProjetilPlayer projeteis[]);
 
