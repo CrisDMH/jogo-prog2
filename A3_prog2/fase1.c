@@ -22,19 +22,18 @@ static ALLEGRO_SAMPLE_INSTANCE* instancia_musica = NULL;
 static float volume_musica = 0.0f;
 static bool fade_in_ativo = false;
 
-void verificar_colisoes(Player *player, Inimigo inimigos[], ProjetilPlayer projeteis_player[], ProjetilInimigo projeteis_inimigo[]) {
+void verificar_colisoes(Player *player, Inimigo inimigos[], ProjetilPlayer projeteis_player[], ProjetilInimigo projeteis_inimigo[], float camera_x) 
+{
     
     // --- VERIFICA TIROS DO JOGADOR ATINGINDO INIMIGOS ---
     for (int i = 0; i < MAX_PROJETEIS_PLAYER; i++) {
         if (!projeteis_player[i].ativo) continue;
 
         // Caixa de colisão do projétil
-        float proj_p_largura = 20;
-        float proj_p_altura = 10;
-        float proj_p_x1 = projeteis_player[i].x;
-        float proj_p_x2 = projeteis_player[i].x + proj_p_largura;
-        float proj_p_y1 = projeteis_player[i].y;
-        float proj_p_y2 = projeteis_player[i].y + proj_p_altura;
+        float proj_p_x1 = projeteis_player[i].x - camera_x;
+        float proj_p_x2 = projeteis_player[i].x + 100 - camera_x;
+        float proj_p_y1 = projeteis_player[i].y + 175;
+        float proj_p_y2 = projeteis_player[i].y + 185;
 
         for (int j = 0; j < MAX_INIMIGOS; j++) {
             if (!inimigos[j].ativo || inimigos[j].estado_atual == INIMIGO_ATINGIDO) continue;
@@ -43,14 +42,12 @@ void verificar_colisoes(Player *player, Inimigo inimigos[], ProjetilPlayer proje
             // A largura e altura da hitbox agora usam OS MESMOS DADOS da função de desenho,
             // garantindo um alinhamento perfeito com o sprite visível.
             // Usamos 'largura_frame_parado' como uma referência de tamanho consistente.
-            float inimigo_largura = inimigos[j].largura_frame_parado * inimigos[j].escala;
-            float inimigo_altura = inimigos[j].altura_frame_parado * inimigos[j].escala;
-            
-            // O centro da hitbox é o 'x' do inimigo. A base são os "pés" em 'y'.
-            float inimigo_x1 = inimigos[j].x - inimigo_largura / 2;
-            float inimigo_x2 = inimigos[j].x + inimigo_largura / 2;
-            float inimigo_y1 = inimigos[j].y - inimigo_altura;
-            float inimigo_y2 = inimigos[j].y;
+        float inimigo_largura = inimigos[j].largura_frame_parado * inimigos[j].escala;
+        float inimigo_altura = inimigos[j].altura_frame_parado * inimigos[j].escala;
+        float inimigo_x1 = (inimigos[j].x - inimigo_largura / 2) - camera_x + 140;
+        float inimigo_x2 = (inimigos[j].x + inimigo_largura / 2)  - camera_x + 70;
+        float inimigo_y1 = inimigos[j].y - inimigo_altura;
+        float inimigo_y2 = inimigos[j].y;
 
             // Checagem de colisão de caixa contra caixa
             if (proj_p_x1 < inimigo_x2 && proj_p_x2 > inimigo_x1 && proj_p_y1 < inimigo_y2 && proj_p_y2 > inimigo_y1) {
@@ -75,23 +72,23 @@ void verificar_colisoes(Player *player, Inimigo inimigos[], ProjetilPlayer proje
         if (!projeteis_inimigo[i].ativo) continue;
 
         // Caixa de colisão do projétil
-        float proj_i_largura = 20;
-        float proj_i_altura = 10;
-        float proj_i_x1 = projeteis_inimigo[i].x;
-        float proj_i_x2 = projeteis_inimigo[i].x + proj_i_largura;
-        float proj_i_y1 = projeteis_inimigo[i].y;
-        float proj_i_y2 = projeteis_inimigo[i].y + proj_i_altura;
 
-        // --- HITBOX DO JOGADOR CORRIGIDA ---
-        // A hitbox do jogador também usa seus próprios dados de sprite para precisão.
-        // Usamos a altura do sprite agachado para uma hitbox mais consistente.
-        float player_largura = player->frame_largura_andando * player->escala;
-        float player_altura = player->frame_altura_agachado * player->escala;
-        float player_x1 = player->x - player_largura / 2;
-        float player_x2 = player->x + player_largura / 2;
-        float player_y1 = player->y - player_altura;
-        float player_y2 = player->y;
-        
+        float proj_i_x1 = projeteis_inimigo[i].x - camera_x;
+        float proj_i_x2 = projeteis_inimigo[i].x + 80 - camera_x;
+        float proj_i_y1 = projeteis_inimigo[i].y - 30;
+        float proj_i_y2 = projeteis_inimigo[i].y - 20;
+
+    float player_largura = 60 * player->escala;
+    float player_altura = 337 * player->escala; 
+    
+    float player_x1 = (player->x - player_largura / 2) - camera_x + 30 ;
+    float player_x2 = (player->x + player_largura / 2) - camera_x + 70;
+    float player_y1 = (player->y - player_altura) + 330;
+    float player_y2 = player->y + 350;
+
+    if (player->estado_atual == AGACHADO || player->estado_atual == ANDANDO_AGACHADO || player->estado_atual == ATACANDO_AGACHADO) 
+      player_y1 = (player->y - player_altura) + 358;
+
         if (proj_i_x1 < player_x2 && proj_i_x2 > player_x1 && proj_i_y1 < player_y2 && proj_i_y2 > player_y1) {
             projeteis_inimigo[i].ativo = false;
             player->vida -= DANO_INIMIGO;
@@ -101,39 +98,42 @@ void verificar_colisoes(Player *player, Inimigo inimigos[], ProjetilPlayer proje
     }
 }
 
-void desenhar_debug_hitboxes(Player *player, Inimigo inimigos[], ProjetilPlayer projeteis_player[], ProjetilInimigo projeteis_inimigo[], float camera_x) {
+void desenhar_debug_hitboxes(Player *player, Inimigo inimigos[], ProjetilPlayer projeteis_player[], ProjetilInimigo projeteis_inimigo[], float camera_x) 
+{
     
     // --- HITBOX DO JOGADOR (Verde) ---
     float player_largura = 60 * player->escala;
     float player_altura = 337 * player->escala; // Altura baseada no sprite agachado
-    float player_x1 = player->x - player_largura / 2;
-    float player_x2 = player->x + player_largura / 2;
-    float player_y1 = player->y - player_altura;
-    float player_y2 = player->y;
-    al_draw_rectangle(player_x1 - camera_x, player_y1, player_x2 - camera_x, player_y2, al_map_rgb(0, 255, 0), 2.0);
+    float player_x1 = (player->x - player_largura / 2) - camera_x + 30 ;
+    float player_x2 = (player->x + player_largura / 2) - camera_x + 70;
+    float player_y1 = (player->y - player_altura) + 330;
+    float player_y2 = player->y + 350;
+        if (player->estado_atual == AGACHADO || player->estado_atual == ANDANDO_AGACHADO || player->estado_atual == ATACANDO_AGACHADO) 
+      player_y1 = (player->y - player_altura) + 358;
+    al_draw_rectangle(player_x1, player_y1, player_x2, player_y2, al_map_rgb(0, 255, 0), 2.0);
 
     // --- HITBOX DOS INIMIGOS (Vermelho) ---
     for (int i = 0; i < MAX_INIMIGOS; i++) {
         if (!inimigos[i].ativo) continue;
         float inimigo_largura = inimigos[i].largura_frame_parado * inimigos[i].escala;
         float inimigo_altura = inimigos[i].altura_frame_parado * inimigos[i].escala;
-        float inimigo_x1 = inimigos[i].x - inimigo_largura / 2;
-        float inimigo_x2 = inimigos[i].x + inimigo_largura / 2;
+        float inimigo_x1 = (inimigos[i].x - inimigo_largura / 2) - camera_x + 140;
+        float inimigo_x2 = (inimigos[i].x + inimigo_largura / 2)  - camera_x + 70;
         float inimigo_y1 = inimigos[i].y - inimigo_altura;
         float inimigo_y2 = inimigos[i].y;
-        al_draw_rectangle(inimigo_x1 - camera_x, inimigo_y1, inimigo_x2 - camera_x, inimigo_y2, al_map_rgb(255, 0, 0), 2.0);
+        al_draw_rectangle(inimigo_x1, inimigo_y1, inimigo_x2, inimigo_y2, al_map_rgb(255, 0, 0), 2.0);
     }
 
     // --- HITBOX DOS PROJÉTEIS DO JOGADOR (Azul) ---
     for (int i = 0; i < MAX_PROJETEIS_PLAYER; i++) {
         if (!projeteis_player[i].ativo) continue;
-        al_draw_filled_rectangle(projeteis_player[i].x - camera_x, projeteis_player[i].y, projeteis_player[i].x + 20 - camera_x, projeteis_player[i].y + 10, al_map_rgb(0, 0, 255));
+        al_draw_filled_rectangle(projeteis_player[i].x - camera_x, projeteis_player[i].y + 175, projeteis_player[i].x + 100 - camera_x, projeteis_player[i].y + 185, al_map_rgb(0, 0, 255));
     }
 
     // --- HITBOX DOS PROJÉTEIS DO INIMIGO (Amarelo) ---
     for (int i = 0; i < MAX_PROJETEIS_INIMIGO; i++) {
         if (!projeteis_inimigo[i].ativo) continue;
-        al_draw_filled_rectangle(projeteis_inimigo[i].x - camera_x, projeteis_inimigo[i].y, projeteis_inimigo[i].x + 20 - camera_x, projeteis_inimigo[i].y + 10, al_map_rgb(255, 255, 0));
+        al_draw_filled_rectangle(projeteis_inimigo[i].x - camera_x, projeteis_inimigo[i].y -30, projeteis_inimigo[i].x + 80 - camera_x, projeteis_inimigo[i].y - 20, al_map_rgb(255, 255, 0));
     }
 }
 
@@ -224,7 +224,7 @@ void iniciar_fase1(ALLEGRO_DISPLAY *display, ALLEGRO_EVENT_QUEUE *queue, ALLEGRO
       // Câmera...
       float largura_tela = al_get_display_width(display);
 
-      verificar_colisoes(&player, inimigos, projeteis_player, projeteis_inimigo);
+      verificar_colisoes(&player, inimigos, projeteis_player, projeteis_inimigo, camera_x);
             
       // 1. Defina a posição alvo da câmera: o centro da tela no jogador.
       float camera_alvo_x = player.x - (largura_tela / 2.0f);

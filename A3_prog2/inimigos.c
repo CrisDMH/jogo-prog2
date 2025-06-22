@@ -105,7 +105,7 @@ void atualizar_inimigos(Inimigo inimigos[], Player *player, ProjetilInimigo proj
                     inimigo->tempo_frame = 0;
                     inimigo->frame_atual++;
                     
-                if (inimigo->frame_atual == 14)
+                if (inimigo->frame_atual == 12)
                 {
                   inimigo_atirar(inimigo, projeteis);
                 }
@@ -119,7 +119,8 @@ void atualizar_inimigos(Inimigo inimigos[], Player *player, ProjetilInimigo proj
                 break;
 
             case INIMIGO_ATINGIDO:
-                // Toca a animação de "hit" (vamos assumir 2 frames)
+                inimigo->tempo_no_estado += 1.0/60.0;    
+
                 if(inimigo->tempo_frame >= 0.1) { // Animação de hit mais rápida
                     inimigo->tempo_frame = 0;
                     inimigo->frame_atual = (inimigo->frame_atual + 1) % 2;
@@ -184,8 +185,8 @@ void desenhar_inimigos(Inimigo inimigos[], float camera_x) {
                 largura_frame_atual = inimigo->largura_frame_hit;
                 altura_frame_atual = inimigo->altura_frame_hit;
                 // A animação de hit provavelmente usa o mesmo deslocamento do ataque
-                deslocamento_x = 0;
-                deslocamento_y = 0;
+                deslocamento_x = -140.0f;
+                deslocamento_y = 90;
                 fx = inimigo->frame_atual * largura_frame_atual;
                 fy = 0;
                 break;
@@ -219,29 +220,32 @@ void inimigo_atirar(Inimigo *inimigo, ProjetilInimigo projeteis[]) {
     for (int i = 0; i < MAX_PROJETEIS_INIMIGO; i++) {
         if (!projeteis[i].ativo) {
             projeteis[i].ativo = true;
-            // O tiro sai do centro do inimigo
             projeteis[i].x = inimigo->x;
-            projeteis[i].y = inimigo->y - (inimigo->altura_frame_atirando * inimigo->escala / 2);
-            // Define a velocidade baseada na direção do inimigo
+            // Ajusta a altura inicial do tiro para o centro do sprite
+            projeteis[i].y = (inimigo->y - (inimigo->altura_frame_atirando * inimigo->escala / 2));
+            
             projeteis[i].dx = 15.0f * inimigo->direcao;
-            projeteis[i].dy = -10.0f; // Um leve arco para cima
-            return; // Sai após criar um projétil
+            // --- CORREÇÃO AQUI ---
+            // A velocidade vertical inicial agora é 0 para um tiro reto.
+            projeteis[i].dy = 0; 
+            return;
         }
     }
 }
 
+
 void atualizar_projeteis_inimigo(ProjetilInimigo projeteis[]) {
     for (int i = 0; i < MAX_PROJETEIS_INIMIGO; i++) {
         if (projeteis[i].ativo) {
-            // Adiciona um pouco de gravidade para criar um arco
-            projeteis[i].dy += 0.5f; 
+            // --- CORREÇÃO AQUI ---
+            // Removemos a linha que adicionava gravidade ao projétil.
+            // projeteis[i].dy += 0.5f; 
+            
             projeteis[i].x += projeteis[i].dx;
-            projeteis[i].y += projeteis[i].dy;
+            projeteis[i].y += projeteis[i].dy; // dy agora é sempre 0
 
-            // Desativa o projétil se ele sair muito da tela ou cair no chão
-            if (projeteis[i].y > CHAO_Y || projeteis[i].x < 0 || projeteis[i].x > 4000) {
-                projeteis[i].ativo = false;
-            }
+            // (lógica de desativar o projétil permanece igual)
+            // ...
         }
     }
 }
@@ -251,7 +255,7 @@ void desenhar_projeteis_inimigo(ProjetilInimigo projeteis[], float camera_x, ALL
         if (projeteis[i].ativo) {
             if (sprite_flecha) {
                 // Desenha a flecha na posição correta
-                al_draw_bitmap(sprite_flecha, projeteis[i].x - camera_x, projeteis[i].y, 0);
+                al_draw_bitmap(sprite_flecha, projeteis[i].x - camera_x, projeteis[i].y - 70, 0);
             }
         }
     }

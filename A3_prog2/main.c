@@ -55,6 +55,9 @@ int main()
   ALLEGRO_BITMAP *seta_baixo = al_load_bitmap("seta_baixo.png");
   ALLEGRO_BITMAP *flecha = al_load_bitmap("flecha.png");
   ALLEGRO_BITMAP *flecha_inimigo = al_load_bitmap("flecha_inimigo.png");
+    if (!flecha_inimigo) {
+      fprintf(stderr, "ERRO FATAL: Nao foi possivel carregar 'flecha_inimigo.png'.\n");
+  }
 
   ALLEGRO_SAMPLE *musica_menu = al_load_sample("menu_theme.ogg");
   ALLEGRO_SAMPLE *musica_fase1 = al_load_sample("lost paintings.ogg");
