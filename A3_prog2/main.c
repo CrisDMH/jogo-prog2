@@ -15,6 +15,7 @@
 #include "player.h"
 #include "fase1.h"
 #include "hud.h"
+#include "inimigos.h"
 
 typedef enum {
     ESTADO_MENU,
@@ -53,10 +54,7 @@ int main()
   ALLEGRO_BITMAP *seta_cima = al_load_bitmap("seta_cima.png");
   ALLEGRO_BITMAP *seta_baixo = al_load_bitmap("seta_baixo.png");
   ALLEGRO_BITMAP *flecha = al_load_bitmap("flecha.png");
-  ALLEGRO_BITMAP *spritesheet_andando = al_load_bitmap("spritesheet andando.png");
-  ALLEGRO_BITMAP *spritesheet_mirando = al_load_bitmap("spritesheet mirando.png");
-  ALLEGRO_BITMAP *spritesheet_pulando = al_load_bitmap("spritesheet pulando.png"); 
-  ALLEGRO_BITMAP *spritesheet_agachado = al_load_bitmap("spritesheet agachado.png");
+  ALLEGRO_BITMAP *flecha_inimigo = al_load_bitmap("flecha_inimigo.png");
 
   ALLEGRO_SAMPLE *musica_menu = al_load_sample("menu_theme.ogg");
   ALLEGRO_SAMPLE *musica_fase1 = al_load_sample("lost paintings.ogg");
@@ -68,6 +66,8 @@ int main()
   GameState estado_atual = ESTADO_MENU;
 
   carregar_hud();
+  player_carregar_sprites();
+  inimigo_carregar_sprites();
 
   if (musica_menu) 
   {
@@ -129,7 +129,7 @@ int main()
         }
 
         // Chama a função que contém todo o loop da fase 1
-        iniciar_fase1(disp, queue, flecha, spritesheet_andando);
+        iniciar_fase1(disp, queue, flecha, flecha_inimigo);
         
         // Quando a fase 1 terminar (seja por game over ou por completar), volta para o menu
         estado_atual = ESTADO_MENU;
@@ -149,11 +149,12 @@ int main()
   al_destroy_bitmap(opcoes_background);
   al_destroy_bitmap(mao);
   al_destroy_bitmap(flecha);
-  al_destroy_bitmap(spritesheet_andando);
-  al_destroy_bitmap(spritesheet_mirando);
-  al_destroy_bitmap(spritesheet_pulando);
-  al_destroy_bitmap(spritesheet_agachado);
+  al_destroy_bitmap(flecha_inimigo);
   
+  player_destruir_sprites();
+  destruir_hud();
+  inimigo_destruir_sprites();
+
   al_destroy_font(fonte_inicial);
   al_destroy_font(fonte_opcoes);
   al_destroy_font(fonte_titulo);

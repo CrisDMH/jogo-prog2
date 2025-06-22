@@ -11,12 +11,14 @@ static ALLEGRO_BITMAP* rosto_normal = NULL;
 static ALLEGRO_BITMAP* rosto_machucado = NULL;
 static ALLEGRO_BITMAP* rosto_destruido = NULL;
 static ALLEGRO_FONT* fonte_reload = NULL;
+static ALLEGRO_FONT* vida = NULL;
 
 void carregar_hud() 
 {
   rosto_normal = al_load_bitmap("personagem.png");
   rosto_machucado = al_load_bitmap("personagem machucado.png");
   rosto_destruido = al_load_bitmap("personagem muito machucado.png");
+  vida = al_load_ttf_font("alagard.ttf", 60, 0);
 
   if (!rosto_normal || !rosto_machucado || !rosto_destruido) 
   {
@@ -73,7 +75,7 @@ void desenhar_barra_vida(Player* player)
 
   // Desenha o fundo da barra (cinza escuro)
   al_draw_filled_rectangle(x_barra, y_barra, x_barra + largura_maxima, y_barra + altura_barra, al_map_rgb(50, 50, 50));
-
+  
   // Cor da vida (verde, amarelo ou vermelho dependendo do percentual)
   ALLEGRO_COLOR cor_vida;
   if (player->vida > 66) 
@@ -89,7 +91,23 @@ void desenhar_barra_vida(Player* player)
     cor_vida = al_map_rgb(255, 0, 0);  // Vermelho
   }
 
-  // Desenha a vida
+  char texto_vida[16];
+  sprintf(texto_vida, "%d%%", player->vida);
+  
+  // Desenha a borda do valor da vida
+  al_draw_text(vida, al_map_rgb(0, 0, 0), 380 - 2, 25, 0, texto_vida);
+  al_draw_text(vida, al_map_rgb(0, 0, 0), 380 + 2, 25, 0, texto_vida);
+  al_draw_text(vida, al_map_rgb(0, 0, 0), 380, 25 - 2, 0, texto_vida);
+  al_draw_text(vida, al_map_rgb(0, 0, 0), 380, 25 + 2, 0, texto_vida);
+  al_draw_text(vida, al_map_rgb(0, 0, 0), 380 - 2, 25 - 2, 0, texto_vida);
+  al_draw_text(vida, al_map_rgb(0, 0, 0), 380 + 2, 25 - 2, 0, texto_vida);
+  al_draw_text(vida, al_map_rgb(0, 0, 0), 380 - 2, 25 + 2, 0, texto_vida);
+  al_draw_text(vida, al_map_rgb(0, 0, 0), 380 + 2, 25 + 2, 0, texto_vida);
+  
+  // Valor da vida
+  al_draw_text(vida, cor_vida, 380, 25, 0, texto_vida);
+
+  // Desenha a barra de vida
   al_draw_filled_rectangle(x_barra, y_barra, x_barra + largura_vida, y_barra + altura_barra, cor_vida);
 
   // (Opcional) Borda da barra
@@ -105,6 +123,7 @@ void destruir_hud()
   al_destroy_bitmap(rosto_destruido);
 
   al_destroy_font(fonte_reload);
+  al_destroy_font(vida);
 }
 
 void desenhar_balas(Player *player, ALLEGRO_BITMAP *icone_bala) {

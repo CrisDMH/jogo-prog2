@@ -12,6 +12,8 @@
 #define GRAVIDADE 0.8f
 #define CHAO_Y 600.0f    // Coordenada Y do chão
 #define MAX_BALAS 4
+#define VELOCIDADE_AGACHADO 4
+#define DANO_JOGADOR 34
 
 // Struct para os projéteis do jogador
 typedef struct {
@@ -27,7 +29,8 @@ typedef enum {
     PULANDO,
     AGACHADO,
     ANDANDO_AGACHADO,
-    ATACANDO_PULANDO
+    ATACANDO_PULANDO,
+    ATACANDO_AGACHADO
 } player_estado;
 
 // Struct para o jogador
@@ -59,6 +62,8 @@ typedef struct
   ALLEGRO_BITMAP *spritesheet_atirando;
   ALLEGRO_BITMAP *spritesheet_pulando;
   ALLEGRO_BITMAP *spritesheet_agachado;
+  ALLEGRO_BITMAP *spritesheet_atacando_pulando;
+  ALLEGRO_BITMAP *spritesheet_atacando_agachado;
 
   int max_frames;           
   bool andando;   
@@ -70,22 +75,30 @@ typedef struct
   int frame_altura_pulo;
   int frame_largura_agachado;
   int frame_altura_agachado;
+  int frame_largura_atacando_pulando;
+  int frame_altura_atacando_pulando;
+  int frame_largura_atacando_agachado;
+  int frame_altura_atacando_agachado;
   int linha_atual;   
 
 } Player;
 
 // --- Declarações das Funções ---
 // Funções de inicialização
-void inicializar_player(Player *player, ALLEGRO_BITMAP *sprite_andando, ALLEGRO_BITMAP *sprite_mirando, ALLEGRO_BITMAP *sprite_pulando, ALLEGRO_BITMAP *sprite_agachado);
+void inicializar_player(Player *player);
 
 void inicializar_projeteis_player(ProjetilPlayer projeteis[]);
+
+void player_carregar_sprites();
+
+void player_destruir_sprites();
 
 // Funções chamadas a cada frame no loop do jogo
 void processar_input_player(Player *player, ALLEGRO_KEYBOARD_STATE *teclado, ProjetilPlayer projeteis[]);
 
 void atualizar_player(Player *player, ALLEGRO_KEYBOARD_STATE *teclado);
 
-void atirar_projetil_player(Player *player, ProjetilPlayer projeteis[]);
+bool atirar_projetil_player(Player *player, ProjetilPlayer projeteis[], bool esta_agachado);
 
 void atualizar_projeteis_player(ProjetilPlayer projeteis[], float camera_x);
 

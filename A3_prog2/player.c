@@ -5,7 +5,34 @@
 #define DIREITA 1
 #define ESQUERDA -1
 
-void inicializar_player(Player *player, ALLEGRO_BITMAP *sprite_andando, ALLEGRO_BITMAP *sprite_mirando, ALLEGRO_BITMAP *sprite_pulando, ALLEGRO_BITMAP *sprite_agachado)
+static ALLEGRO_BITMAP *sprite_andando = NULL;
+static ALLEGRO_BITMAP *sprite_mirando = NULL;
+static ALLEGRO_BITMAP *sprite_pulando = NULL;
+static ALLEGRO_BITMAP *sprite_agachado = NULL;
+static ALLEGRO_BITMAP *sprite_atacando_pulando = NULL;
+static ALLEGRO_BITMAP *sprite_atacando_agachado = NULL;
+
+void player_carregar_sprites() 
+{
+  sprite_andando = al_load_bitmap("spritesheet andando.png");
+  sprite_mirando = al_load_bitmap("spritesheet mirando.png");
+  sprite_pulando = al_load_bitmap("spritesheet pulando.png");
+  sprite_agachado = al_load_bitmap("spritesheet agachado.png");
+  sprite_atacando_pulando = al_load_bitmap("spritesheet pulando e atirando.png");
+  sprite_atacando_agachado = al_load_bitmap("spritesheet agachado atirando.png");
+}
+
+void player_destruir_sprites() 
+{
+  al_destroy_bitmap(sprite_andando);
+  al_destroy_bitmap(sprite_mirando);
+  al_destroy_bitmap(sprite_pulando);
+  al_destroy_bitmap(sprite_agachado);
+  al_destroy_bitmap(sprite_atacando_pulando);
+  al_destroy_bitmap(sprite_atacando_agachado);
+}
+
+void inicializar_player(Player *player)
 {
     player->x = 100;
     player->y = CHAO_Y; // Posição inicial no "chão"
@@ -23,6 +50,8 @@ void inicializar_player(Player *player, ALLEGRO_BITMAP *sprite_andando, ALLEGRO_
     player->spritesheet_atirando = sprite_mirando;
     player->spritesheet_pulando = sprite_pulando;
     player->spritesheet_agachado = sprite_agachado;
+    player->spritesheet_atacando_pulando = sprite_atacando_pulando;
+    player->spritesheet_atacando_agachado = sprite_atacando_agachado;
 
     player->frame_atual = 0;
     player->max_frames = 14; // spritesheet tem 7 frames de animação por linha
@@ -40,8 +69,14 @@ void inicializar_player(Player *player, ALLEGRO_BITMAP *sprite_andando, ALLEGRO_
     player->frame_largura_pulo = 301;
     player->frame_altura_pulo = 367;
 
-    player->frame_largura_agachado = 180;
-    player->frame_altura_agachado = 365;
+    player->frame_largura_agachado = 250;
+    player->frame_altura_agachado = 337;
+
+    player->frame_largura_atacando_pulando = 350;
+    player->frame_altura_atacando_pulando = 370;
+
+    player->frame_largura_atacando_agachado = 302;
+    player->frame_altura_atacando_agachado = 337;
 
     player->linha_atual = 0;
 
@@ -55,39 +90,34 @@ void inicializar_projeteis_player(ProjetilPlayer projeteis[]) {
     }
 }
 
-void atirar_projetil_player(Player *player, ProjetilPlayer projeteis[])
+bool atirar_projetil_player(Player *player, ProjetilPlayer projeteis[], bool esta_agachado)
 {
-  if (player->recarregando || player->balas <= 0) 
-    return;
+  if (player->recarregando || player->balas <= 0) return false;
+  if (al_get_time() - player->ultimo_tiro < COOLDOWN_TIRO) return false;
 
-    player->atirando = true;
-    player->tempo_tiro = al_get_time();
-    
-    // Verifica o cooldown
-    if (al_get_time() - player->ultimo_tiro < COOLDOWN_TIRO) {
-        return; // Ainda não pode atirar
-    }
-
-    for (int i = 0; i < MAX_PROJETEIS_PLAYER; i++) {
-        if (!projeteis[i].ativo) {
-            projeteis[i].ativo = true;
-            projeteis[i].x = (player->direcao == DIREITA) ? player->x + 50 : player->x;
+  for (int i = 0; i < MAX_PROJETEIS_PLAYER; i++) {
+    if (!projeteis[i].ativo) {
+        projeteis[i].ativo = true;
+        projeteis[i].x = (player->direcao == DIREITA) ? player->x + 50 : player->x;
+        
+        // Usa o novo parâmetro para decidir a altura
+        if (esta_agachado) {
+            projeteis[i].y = player->y + 60;
+        } else {
             projeteis[i].y = player->y + 25;
-            projeteis[i].dx = (player->direcao == DIREITA) ? 30 : -30;
-
-            player->ultimo_tiro = al_get_time();
-
-            player->balas--;  // Diminui uma bala
-
-            // Se acabou as balas, inicia a recarga
-            if (player->balas <= 0) {
-                player->recarregando = true;
-                player->tempo_recarga = 0.0f;
-            }
-
-            break;
         }
+        
+        projeteis[i].dx = (player->direcao == DIREITA) ? 30 : -30;
+        player->ultimo_tiro = al_get_time();
+        player->balas--;
+        if (player->balas <= 0) {
+            player->recarregando = true;
+            player->tempo_recarga = 0.0f;
+        }
+        return true; 
     }
+  }
+  return false;
 }
 
 void processar_input_player(Player *player, ALLEGRO_KEYBOARD_STATE *teclado, ProjetilPlayer projeteis[]) 
@@ -100,68 +130,78 @@ void processar_input_player(Player *player, ALLEGRO_KEYBOARD_STATE *teclado, Pro
     if (pulando && player->no_chao) {
         player->dy = FORCA_PULO;
         player->no_chao = false;
-        // O estado será definido como PULANDO em atualizar_player
-        return; // Sai da função para não processar outros inputs neste frame
+        player->estado_atual = PULANDO;
+        player->frame_atual = 0;
+        return; 
     }
 
-    // O estado de ATACANDO tem prioridade e não pode ser interrompido por movimento
-    if (player->estado_atual != ATACANDO) {
+    if (!player->no_chao) {
         if (atacando) {
-            player->estado_atual = ATACANDO;
-            player->frame_atual = 0; // Reinicia a animação de ataque
-            player->tempo_no_estado = 0; // Reinicia o timer do estado de ataque
-            atirar_projetil_player(player, projeteis);
-        } else if (movendo) {
-            player->estado_atual = ANDANDO;
-        } else {
+            if (atirar_projetil_player(player, projeteis, false)) { // No ar: não está agachado
+                player->estado_atual = ATACANDO_PULANDO;
+                player->frame_atual = 0;
+                player->tempo_no_estado = 0;
+            }
+        }
+    } 
+    else {
+        if (agachado) {
+            if (player->estado_atual == ATACANDO_AGACHADO) {}
+            else if (atacando) {
+                if (atirar_projetil_player(player, projeteis, true)) { // No chão e agachado: está agachado
+                    player->estado_atual = ATACANDO_AGACHADO;
+                    player->frame_atual = 0;
+                    player->tempo_no_estado = 0;
+                }
+            }
+            else if (movendo) { player->estado_atual = ANDANDO_AGACHADO; } 
+            else { player->estado_atual = AGACHADO; }
+        } 
+        else if (player->estado_atual == AGACHADO || player->estado_atual == ANDANDO_AGACHADO || player->estado_atual == ATACANDO_AGACHADO) {
             player->estado_atual = PARADO;
         }
+        else if (atacando) {
+            if (atirar_projetil_player(player, projeteis, false)) { // Em pé: não está agachado
+                player->estado_atual = ATACANDO;
+                player->frame_atual = 0;
+                player->tempo_no_estado = 0;
+            }
+        }
+        else if (movendo) { player->estado_atual = ANDANDO; }
+        else { player->estado_atual = PARADO; }
     }
 
-    if (al_key_down(teclado, ALLEGRO_KEY_LEFT)) 
-      player->direcao = ESQUERDA;
-    
-    if (al_key_down(teclado, ALLEGRO_KEY_RIGHT)) 
-      player->direcao = DIREITA;
+    if (al_key_down(teclado, ALLEGRO_KEY_LEFT)) player->direcao = ESQUERDA;
+    if (al_key_down(teclado, ALLEGRO_KEY_RIGHT)) player->direcao = DIREITA;
 }
 
 void atualizar_player(Player *player, ALLEGRO_KEYBOARD_STATE *teclado) 
 {
+    // 1. APLICA FÍSICA (GRAVIDADE)
     player->dy += GRAVIDADE;
     player->y += player->dy;
 
-    // Colisão com o chão e estado de pulo
+    // 2. VERIFICA COLISÃO COM O CHÃO (LÓGICA DE ATERRISSAGEM)
     if (player->y >= CHAO_Y) {
         player->y = CHAO_Y;
         player->dy = 0;
         player->no_chao = true;
-        // Se o estado era PULANDO, agora que está no chão, deve voltar a ser PARADO
-        if (player->estado_atual == PULANDO) {
+        // Se o estado era aéreo (PULANDO ou ATACANDO_PULANDO), agora que está no chão, volta a ser PARADO.
+        if (player->estado_atual == PULANDO || player->estado_atual == ATACANDO_PULANDO) {
             player->estado_atual = PARADO;
         }
     } else {
+        // Se não está no chão, está no ar.
         player->no_chao = false;
-        // Força o estado PULANDO se estiver no ar (e não estiver atacando)
-      if (player->estado_atual != ATACANDO) 
-      {
-        player->estado_atual = PULANDO;
-        player->frame_atual = 0;  // Opcional: garante que a animação de pulo comece do frame 0
-        player->tempo_frame = 0;  // Reinicia o tempo de frame para o pulo
-      }
     }
-    // Acumula o tempo que passou (estamos em um timer de 60 FPS, então 1/60 de segundo)
+
+    // 3. ATUALIZA O TEMPO PARA ANIMAÇÃO
     player->tempo_frame += 1.0 / 60.0;
 
-    if (!player->no_chao && player->estado_atual == ANDANDO) 
-    {
-      player->estado_atual = PULANDO;
-      player->frame_atual = 0;
-      player->tempo_frame = 0;
-    }
-
+    // 4. ATUALIZA A RECARGA (se aplicável)
     if (player->recarregando) 
     {
-      player->tempo_recarga += 1.0f / 60.0f;  // Considerando 60 FPS
+      player->tempo_recarga += 1.0f / 60.0f;
       if (player->tempo_recarga >= 2.0f) 
       {
         player->balas = MAX_BALAS;
@@ -170,67 +210,92 @@ void atualizar_player(Player *player, ALLEGRO_KEYBOARD_STATE *teclado)
       }
     }
 
-    // Lógica baseada no estado atual
+    // 5. ATUALIZA ANIMAÇÃO E POSIÇÃO BASEADO NO ESTADO ATUAL (sem mais lógicas conflitantes)
     switch (player->estado_atual) {
         case ANDANDO:
-            // Move o personagem
             player->x += VELOCIDADE_PLAYER * player->direcao;
-            
-            // Anima o personagem usando TODOS OS 14 FRAMES
-            if (player->tempo_frame >= player->duracao_frame) 
-            {
+            if (player->tempo_frame >= player->duracao_frame) {
               player->tempo_frame -= player->duracao_frame;
-              // O contador agora vai de 0 a 13 (total de 14 frames)
               player->frame_atual = (player->frame_atual + 1) % 14; 
             }
+
             break;
 
         case ATACANDO:
             player->tempo_no_estado += 1.0 / 60.0;
-            
-            // Anima o ataque usando os 3 FRAMES do outro spritesheet
-            if (player->tempo_frame >= player->duracao_frame) 
-            {
+            if (player->tempo_frame >= player->duracao_frame) {
               player->tempo_frame -= player->duracao_frame;
-              // O contador vai de 0 a 2 (total de 3 frames)
               player->frame_atual = (player->frame_atual + 1) % 3;
             }
-
-            // Verifica se o tempo da animação de ataque acabou
             if (player->tempo_no_estado > 0.3) {
                 player->estado_atual = PARADO;
             }
+
             break;
 
-        case PULANDO:
-            // Animação do pulo
-            if (player->tempo_frame >= player->duracao_frame) 
-            {
-              if (player->frame_atual < 3) 
-              { 
-                player->frame_atual++;
-              }
-              player->tempo_frame -= player->duracao_frame;
+        case ATACANDO_AGACHADO:
+            player->tempo_no_estado += 1.0 / 60.0;
+            player->frame_atual = 0;
+
+            // Após a animação, retorna para o estado AGACHADO
+            if (player->tempo_no_estado > 0.3) {
+                player->estado_atual = AGACHADO;
             }
 
-            if (al_key_down(teclado, ALLEGRO_KEY_RIGHT)) {
-                player->x += VELOCIDADE_PLAYER;
-                player->direcao = DIREITA;
+            break;
+            
+        case AGACHADO:
+            player->frame_atual = 0;
+            
+            break;
+
+    case ANDANDO_AGACHADO:
+        // Move o personagem com a nova velocidade reduzida
+        player->x += VELOCIDADE_AGACHADO * player->direcao;
+        
+        // Animação de andar agachado
+        if (player->tempo_frame >= player->duracao_frame) {
+            player->tempo_frame -= player->duracao_frame;
+
+            // ---- LÓGICA ATUALIZADA PARA 5 FRAMES DE ANIMAÇÃO (1 a 5) ----
+            // Se o frame atual não está no range da animação (1-5), reinicia no 1
+            if (player->frame_atual < 1 || player->frame_atual > 5) {
+                player->frame_atual = 1;
+            } else {
+                // Avança para o próximo frame e volta para o 1 se passar do 5
+                player->frame_atual++;
+                if (player->frame_atual > 5) {
+                    player->frame_atual = 1;
+                }
             }
-            if (al_key_down(teclado, ALLEGRO_KEY_LEFT)) {
-                player->x -= VELOCIDADE_PLAYER;
-                player->direcao = ESQUERDA;
+        }
+        break;
+
+        case ATACANDO_PULANDO:
+            player->tempo_no_estado += 1.0 / 60.0;
+            player->frame_atual = 0; // Frame único
+            if (al_key_down(teclado, ALLEGRO_KEY_RIGHT)) player->x += VELOCIDADE_PLAYER * player->direcao;
+            if (al_key_down(teclado, ALLEGRO_KEY_LEFT)) player->x += VELOCIDADE_PLAYER * player->direcao;
+            if (player->tempo_no_estado > 0.3) player->estado_atual = PULANDO;
+            break;    
+
+        case PULANDO:
+            // Animação do pulo (sobe e para no último frame de pulo)
+            if (player->tempo_frame >= player->duracao_frame) {
+              if (player->frame_atual < 3) player->frame_atual++;
+              player->tempo_frame -= player->duracao_frame;
             }
+            // Controle no ar
+            if (al_key_down(teclado, ALLEGRO_KEY_RIGHT)) player->x += VELOCIDADE_PLAYER;
+            if (al_key_down(teclado, ALLEGRO_KEY_LEFT)) player->x -= VELOCIDADE_PLAYER;
             break; 
 
         case PARADO:
-            if (player->tempo_frame >= player->duracao_frame) 
-            {
-              player->frame_atual = 0;
-            }
+            player->frame_atual = 0;
             break;
     }
 }
+
 
 
 void atualizar_projeteis_player(ProjetilPlayer projeteis[], float camera_x) {
@@ -238,7 +303,7 @@ void atualizar_projeteis_player(ProjetilPlayer projeteis[], float camera_x) {
         if (projeteis[i].ativo) {
             projeteis[i].x += projeteis[i].dx;
             // Desativar projétil se sair da área visível da câmera
-            if (projeteis[i].x < camera_x || projeteis[i].x > camera_x + 1280) { // 1280 é a largura da tela
+            if (projeteis[i].x < camera_x - 100 || projeteis[i].x > camera_x + 2000) { // 1280 é a largura da tela
                 projeteis[i].ativo = false;
             }
         }
@@ -251,6 +316,7 @@ void desenhar_player(Player *player, float camera_x)
     int largura_frame = 0;
     int altura_frame = 0;
     int fx = 0, fy = 0; // Source X e Source Y no spritesheet
+    float deslocamento_y = 0;
 
     // Decide qual spritesheet e dimensões usar baseado no estado
     switch (player->estado_atual) {
@@ -280,10 +346,42 @@ void desenhar_player(Player *player, float camera_x)
             sheet_usado = player->spritesheet_agachado;
             largura_frame = player->frame_largura_agachado;
             altura_frame = player->frame_altura_agachado;
+            // Frame 0 é o personagem agachado e parado
+            fx = 0 * largura_frame;
+            fy = 0;
+            deslocamento_y = 28;
 
-            int coluna_agachado = player->frame_atual % 6;
+            break;
 
-            fx  = coluna_agachado * largura_frame;
+        case ANDANDO_AGACHADO:
+          sheet_usado = player->spritesheet_agachado;
+          largura_frame = player->frame_largura_agachado;
+          altura_frame = player->frame_altura_agachado;
+          deslocamento_y = 28;
+
+          // ---- LÓGICA SIMPLIFICADA PARA UMA ÚNICA LINHA ----
+          // Como todos os frames estão na mesma linha, fy é sempre 0.
+          // A coluna (fx) é simplesmente o frame atual multiplicado pela largura.
+          fx = player->frame_atual * largura_frame;
+          fy = 0;
+
+          break;
+
+        case ATACANDO_AGACHADO:
+            sheet_usado = player->spritesheet_atacando_agachado;
+            largura_frame = player->frame_largura_atacando_agachado;
+            altura_frame = player->frame_altura_atacando_agachado;
+            deslocamento_y = 28; 
+
+            break;          
+
+
+        case ATACANDO_PULANDO:
+            sheet_usado = player->spritesheet_atacando_pulando; 
+            largura_frame = player->frame_largura_atacando_pulando;
+            altura_frame = player->frame_altura_atacando_pulando;
+            
+            break;
 
         case ATACANDO:
             sheet_usado = player->spritesheet_atirando;
@@ -316,7 +414,7 @@ void desenhar_player(Player *player, float camera_x)
         float altura_desenho = altura_frame * player->escala;
 
         al_draw_scaled_bitmap(sheet_usado, fx, fy, largura_frame, altura_frame,
-                              dx, dy + 145, largura_desenho, altura_desenho, flag);
+                              dx, dy + 145 + deslocamento_y, largura_desenho, altura_desenho, flag);
     }
 }
 
