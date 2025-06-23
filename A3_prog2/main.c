@@ -1,4 +1,3 @@
-// COMPILAÇÃO: gcc main.c menu.c player.c fase1.c hud.c -o JOGO $(pkg-config --libs --cflags allegro-5 allegro_main-5 allegro_font-5 allegro_ttf-5 allegro_primitives-5 allegro_image-5 allegro_audio-5 allegro_acodec-5)
 #include <allegro5/allegro.h>
 #include <allegro5/allegro_font.h>
 #include <allegro5/allegro_font.h>
@@ -16,6 +15,7 @@
 #include "fase1.h"
 #include "hud.h"
 #include "inimigos.h"
+#include "boss.h"
 
 typedef enum {
     ESTADO_MENU,
@@ -55,9 +55,6 @@ int main()
   ALLEGRO_BITMAP *seta_baixo = al_load_bitmap("seta_baixo.png");
   ALLEGRO_BITMAP *flecha = al_load_bitmap("flecha.png");
   ALLEGRO_BITMAP *flecha_inimigo = al_load_bitmap("flecha_inimigo.png");
-    if (!flecha_inimigo) {
-      fprintf(stderr, "ERRO FATAL: Nao foi possivel carregar 'flecha_inimigo.png'.\n");
-  }
 
   ALLEGRO_SAMPLE *musica_menu = al_load_sample("menu_theme.ogg");
   ALLEGRO_SAMPLE *musica_fase1 = al_load_sample("lost paintings.ogg");
@@ -71,6 +68,7 @@ int main()
   carregar_hud();
   player_carregar_sprites();
   inimigo_carregar_sprites();
+  boss_carregar_sprites();
 
   if (musica_menu) 
   {
@@ -126,17 +124,23 @@ int main()
     }
     else if (estado_atual == ESTADO_JOGANDO)
     {
-        // Para a música do menu antes de entrar na fase
-        if (musica_menu_instancia && al_get_sample_instance_playing(musica_menu_instancia)) {
-            al_stop_sample_instance(musica_menu_instancia);
-        }
+      // para a música do menu antes de entrar na fase
+      if (musica_menu_instancia && al_get_sample_instance_playing(musica_menu_instancia)) 
+      {
+        al_stop_sample_instance(musica_menu_instancia);
+      }
 
-        // Chama a função que contém todo o loop da fase 1
+      bool prosseguir_para_fase = mostrar_tela_instrucoes(disp, queue, fonte_inicial, fonte_opcoes);
+
+      // Chama a função que contém todo o loop da fase 1
+      if (prosseguir_para_fase) 
+      {
         iniciar_fase1(disp, queue, flecha, flecha_inimigo);
-        
-        // Quando a fase 1 terminar (seja por game over ou por completar), volta para o menu
-        estado_atual = ESTADO_MENU;
+          
         encerrar_fase1();
+      } 
+      
+      estado_atual = ESTADO_MENU;
     }
   }
   
@@ -157,6 +161,7 @@ int main()
   player_destruir_sprites();
   destruir_hud();
   inimigo_destruir_sprites();
+  boss_destruir_sprites();
 
   al_destroy_font(fonte_inicial);
   al_destroy_font(fonte_opcoes);

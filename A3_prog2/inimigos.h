@@ -58,6 +58,8 @@ typedef struct {
 
     float escala;
 
+    float patrol_x1, patrol_x2;
+
 } Inimigo;
 
 // Declarações das funções públicas do módulo do inimigo

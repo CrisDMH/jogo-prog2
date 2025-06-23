@@ -4,6 +4,8 @@
 #include <allegro5/allegro.h>
 #include <stdbool.h>
 
+#define LARGURA_NIVEL 5330
+
 // Constantes relacionadas ao jogador
 #define VELOCIDADE_PLAYER 7
 #define MAX_PROJETEIS_PLAYER 20
@@ -80,6 +82,8 @@ typedef struct
   int frame_largura_atacando_agachado;
   int frame_altura_atacando_agachado;
   int linha_atual;   
+
+  bool pode_avancar_fase;
 
 } Player;
 

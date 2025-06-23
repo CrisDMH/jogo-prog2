@@ -5,7 +5,8 @@
 #define ESQUERDA -1
 #define DIREITA 1
 
-// Ponteiros estáticos para os sprites, para carregar apenas uma vez
+#define LARGURA_NIVEL 5330
+
 static ALLEGRO_BITMAP *sprite_parado = NULL;
 static ALLEGRO_BITMAP *sprite_andando = NULL;
 static ALLEGRO_BITMAP *sprite_atirando = NULL;
@@ -36,9 +37,9 @@ void inicializar_inimigos(Inimigo inimigos[])
         inimigos[i].ativo = false;
     }
 
-    for (int i = 0; i < 2; i++) {
+    for (int i = 0; i < MAX_INIMIGOS; i++) {
         inimigos[i].ativo = true;
-        inimigos[i].x = 800 + i * 700;
+        inimigos[i].x = 800 + i * 450;
         inimigos[i].y = CHAO_Y + 355; 
         inimigos[i].vida = 100;
         inimigos[i].direcao = ESQUERDA;
@@ -62,6 +63,10 @@ void inicializar_inimigos(Inimigo inimigos[])
         inimigos[i].largura_frame_morrendo = 500;   inimigos[i].altura_frame_morrendo = 500;
 
         inimigos[i].escala = 0.64f;
+
+        inimigos[i].patrol_x1 = inimigos[i].x - 200; 
+        inimigos[i].patrol_x2 = inimigos[i].x + 200; 
+
     }
 }
 
@@ -73,30 +78,63 @@ void atualizar_inimigos(Inimigo inimigos[], Player *player, ProjetilInimigo proj
         Inimigo *inimigo = &inimigos[i];
         
         inimigo->tempo_frame += 1.0 / 60.0;
+        inimigo->tempo_no_estado += 1.0 / 60.0;
+
 
         switch (inimigo->estado_atual) {
             
             case INIMIGO_PARADO:
-                // Animação de Parado
                 if (inimigo->tempo_frame >= inimigo->duracao_frame) {
                     inimigo->tempo_frame = 0;
-                    // --- CORREÇÃO AQUI ---
-                    // Mudado de % 7 para % 6 para corresponder aos 6 frames da sua sprite.
                     inimigo->frame_atual = (inimigo->frame_atual + 1) % 6;
                 }
 
                 // Lógica de Decisão (IA)
                 float distancia_x = fabs(player->x - inimigo->x);
                 bool pode_atacar = (al_get_time() - inimigo->tempo_ultimo_ataque > 2.0);
-
-                if (player->x < inimigo->x) inimigo->direcao = ESQUERDA;
-                else inimigo->direcao = DIREITA;
                 
+                // Prioridade 1: Atacar o jogador
                 if (distancia_x < DISTANCIA_ATAQUE && pode_atacar) {
+                    // --- CORREÇÃO DE MIRA ---
+                    // Antes de atacar, garante que está virado para o jogador.
+                    if (player->x < inimigo->x) inimigo->direcao = ESQUERDA;
+                    else inimigo->direcao = DIREITA;
+                    
                     inimigo->estado_atual = INIMIGO_ATACANDO;
                     inimigo->frame_atual = 0;
                     inimigo->tempo_frame = 0;
+                    inimigo->tempo_no_estado = 0;
                 }
+                // Prioridade 2: Se não puder atacar, começa a andar após esperar 2 segundos
+                else if (inimigo->tempo_no_estado > 2.0) {
+                    inimigo->estado_atual = INIMIGO_ANDANDO;
+                    inimigo->tempo_no_estado = 0;
+                }
+                
+                break;
+
+            case INIMIGO_ANDANDO:
+                inimigo->x += VELOCIDADE_INIMIGO * inimigo->direcao;
+                if (inimigo->tempo_frame >= inimigo->duracao_frame) {
+                    inimigo->tempo_frame = 0;
+                    inimigo->frame_atual = (inimigo->frame_atual + 1) % 8;
+                }
+                
+                // APRIMORAMENTO DA IA: Checa se deve parar para atacar
+                float distancia_x_andando = fabs(player->x - inimigo->x);
+                bool pode_atacar_andando = (al_get_time() - inimigo->tempo_ultimo_ataque > 2.0);
+                if (distancia_x_andando < DISTANCIA_ATAQUE && pode_atacar_andando) {
+
+                    inimigo->estado_atual = INIMIGO_PARADO;
+                    inimigo->tempo_no_estado = 0; // Zera o timer de espera para que ele possa decidir atacar rápido
+                }
+                // Se não viu o jogador, continua a patrulha normal
+                else if (inimigo->x <= inimigo->patrol_x1 || inimigo->x >= inimigo->patrol_x2) {
+                    inimigo->direcao *= -1; 
+                    inimigo->estado_atual = INIMIGO_PARADO;
+                    inimigo->tempo_no_estado = 0;
+                }
+                
                 break;
 
             case INIMIGO_ATACANDO:
@@ -114,12 +152,12 @@ void atualizar_inimigos(Inimigo inimigos[], Player *player, ProjetilInimigo proj
                         inimigo->estado_atual = INIMIGO_PARADO;
                         inimigo->frame_atual = 0;
                         inimigo->tempo_ultimo_ataque = al_get_time();
+                        inimigo->tempo_no_estado = 0;
                     }
                 }
                 break;
 
-            case INIMIGO_ATINGIDO:
-                inimigo->tempo_no_estado += 1.0/60.0;    
+            case INIMIGO_ATINGIDO: 
 
                 if(inimigo->tempo_frame >= 0.1) { // Animação de hit mais rápida
                     inimigo->tempo_frame = 0;
@@ -128,14 +166,29 @@ void atualizar_inimigos(Inimigo inimigos[], Player *player, ProjetilInimigo proj
                 // Após 0.3 segundos no estado, volta a ficar parado
                 if (inimigo->tempo_no_estado > 0.3) {
                     inimigo->estado_atual = INIMIGO_PARADO;
+                    inimigo->tempo_no_estado = 0;
                 }
                 break;                
-            
-            default:
-                inimigo->estado_atual = INIMIGO_PARADO;
-                inimigo->frame_atual = 0;
+
+            case INIMIGO_MORRENDO:
+                
+                // Toca a animação de morte (5 frames) uma única vez
+                if (inimigo->tempo_frame >= 0.15 && inimigo->frame_atual < 4) { // Animação mais lenta
+                    inimigo->tempo_frame = 0;
+                    inimigo->frame_atual++;
+                }
+
+                // Após 3 segundos, desativa o inimigo permanentemente
+                if (inimigo->tempo_no_estado > 3.0) {
+                    inimigo->ativo = false;
+                }
+                
                 break;
         }
+
+      if (inimigo->x < 0) { inimigo->x = 0; inimigo->direcao = 1; }
+      if (inimigo->x > LARGURA_NIVEL) { inimigo->x = LARGURA_NIVEL; inimigo->direcao = -1; }    
+
     }
 }
 
@@ -149,7 +202,6 @@ void desenhar_inimigos(Inimigo inimigos[], float camera_x) {
         int altura_frame_atual = 0;
         float fx = 0, fy = 0;
         
-        // 1. Declaramos as variáveis de deslocamento, ambas começando em zero.
         float deslocamento_x = 0;
         float deslocamento_y = 0;
 
@@ -161,16 +213,26 @@ void desenhar_inimigos(Inimigo inimigos[], float camera_x) {
                 
                 fx = inimigo->frame_atual * largura_frame_atual;
                 fy = 0;
+                
                 break;
+
+            case INIMIGO_ANDANDO:
+                sheet_usado = inimigo->sheet_andando;
+                largura_frame_atual = inimigo->largura_frame_andando;
+                altura_frame_atual = inimigo->altura_frame_andando;
+                fx = inimigo->frame_atual * largura_frame_atual;
+                fy = 0;
+                
+                break; 
 
             case INIMIGO_ATACANDO:
                 sheet_usado = inimigo->sheet_atirando;
                 largura_frame_atual = inimigo->largura_frame_atirando;
                 altura_frame_atual = inimigo->altura_frame_atirando;
                 
-                // 2. Definimos ambos os deslocamentos apenas para o estado de ataque.
-                deslocamento_x = -65.0f; // O valor perfeito que você encontrou.
-                deslocamento_y = 10.0f;  // Um valor inicial para o deslocamento para baixo.
+              
+                deslocamento_x = -65.0f; 
+                deslocamento_y = 10.0f;  
 
                 int frames_por_linha = 4;
                 int coluna = inimigo->frame_atual % frames_por_linha;
@@ -184,13 +246,24 @@ void desenhar_inimigos(Inimigo inimigos[], float camera_x) {
                 sheet_usado = inimigo->sheet_hit;
                 largura_frame_atual = inimigo->largura_frame_hit;
                 altura_frame_atual = inimigo->altura_frame_hit;
-                // A animação de hit provavelmente usa o mesmo deslocamento do ataque
+
                 deslocamento_x = -140.0f;
                 deslocamento_y = 90;
                 fx = inimigo->frame_atual * largura_frame_atual;
                 fy = 0;
                 break;
                 
+            case INIMIGO_MORRENDO:
+                sheet_usado = inimigo->sheet_morrendo;
+                largura_frame_atual = inimigo->largura_frame_morrendo;
+                altura_frame_atual = inimigo->altura_frame_morrendo;
+
+                deslocamento_x = -140.0f;
+                deslocamento_y = 90.0f;
+                fx = inimigo->frame_atual * largura_frame_atual;
+                fy = 0;
+                break;
+
         }
         
 
@@ -198,7 +271,7 @@ void desenhar_inimigos(Inimigo inimigos[], float camera_x) {
             float largura_desenho = largura_frame_atual * inimigo->escala;
             float altura_desenho = altura_frame_atual * inimigo->escala;
 
-            // 3. Adicionamos ambos os deslocamentos aos cálculos de posição final.
+
             float dx = inimigo->x - camera_x + deslocamento_x;
             float dy = inimigo->y - altura_desenho + deslocamento_y;
 
@@ -221,12 +294,10 @@ void inimigo_atirar(Inimigo *inimigo, ProjetilInimigo projeteis[]) {
         if (!projeteis[i].ativo) {
             projeteis[i].ativo = true;
             projeteis[i].x = inimigo->x;
-            // Ajusta a altura inicial do tiro para o centro do sprite
             projeteis[i].y = (inimigo->y - (inimigo->altura_frame_atirando * inimigo->escala / 2));
             
             projeteis[i].dx = 15.0f * inimigo->direcao;
-            // --- CORREÇÃO AQUI ---
-            // A velocidade vertical inicial agora é 0 para um tiro reto.
+
             projeteis[i].dy = 0; 
             return;
         }
@@ -237,15 +308,10 @@ void inimigo_atirar(Inimigo *inimigo, ProjetilInimigo projeteis[]) {
 void atualizar_projeteis_inimigo(ProjetilInimigo projeteis[]) {
     for (int i = 0; i < MAX_PROJETEIS_INIMIGO; i++) {
         if (projeteis[i].ativo) {
-            // --- CORREÇÃO AQUI ---
-            // Removemos a linha que adicionava gravidade ao projétil.
-            // projeteis[i].dy += 0.5f; 
-            
+ 
             projeteis[i].x += projeteis[i].dx;
             projeteis[i].y += projeteis[i].dy; // dy agora é sempre 0
 
-            // (lógica de desativar o projétil permanece igual)
-            // ...
         }
     }
 }

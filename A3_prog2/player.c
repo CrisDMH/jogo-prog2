@@ -82,6 +82,7 @@ void inicializar_player(Player *player)
 
     player->estado_atual = PARADO;
 
+    player->pode_avancar_fase = false;
 }
 
 void inicializar_projeteis_player(ProjetilPlayer projeteis[]) {
@@ -294,6 +295,20 @@ void atualizar_player(Player *player, ALLEGRO_KEYBOARD_STATE *teclado)
             player->frame_atual = 0;
             break;
     }
+
+    if (player->x <= -10) 
+    {
+      player->x = -10;
+    }
+    
+    if (!player->pode_avancar_fase) 
+    {
+      if (player->x > LARGURA_NIVEL - (player->frame_largura_andando * player->escala / 2))
+      {
+        player->x = LARGURA_NIVEL - (player->frame_largura_andando * player->escala / 2);
+      }
+    }
+
 }
 
 
